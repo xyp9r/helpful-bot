@@ -44,35 +44,48 @@ bot.on('callback_query', (query) => {
 	const action = query.data; // то что зашито в callback_data кнопки 
 
 	if(action === 'menu_main') {
-		// Когда человек нажал "назад" отменяет режим ожидания текста и возвращаем в главное меню
 		delete userStates[chatId];
 		bot.editMessageText("Главное меню. Выбери нужный инструмент:", {
 			chat_id: chatId,
-			message_id: messageId, // Указываем какое именно сообщение менять
+			message_id: messageId,
 			reply_markup: mainKeyboard
 		});
 	} else if (action === 'menu_profile') {
 		bot.editMessageText("📊 Твой профиль:\n\nУровень доступа: Базовый\nЗапросов сделано: 0", {
 			chat_id: chatId,
-			message_id: messageId, // Указываем какое именно сообщение менять
-			reply_markup: backKeyboard // Подставляем кнопку "назад"
+			message_id: messageId,
+			reply_markup: backKeyboard 
 		});
 	} else if (action === 'module_username') {
 		userStates[chatId] = 'waiting_for_username';
 		bot.editMessageText("🕵🏻‍♂️ Отправь мне никнейм, который нужно проверить (например, google): ", {
 			chat_id: chatId,
-			message_id: messageId, // Указываем какое именно сообщение менять
-			reply_markup: backKeyboard // Подставляем кнопку "назад"
+			message_id: messageId,
+			reply_markup: backKeyboard 
 		});
+	} else if (action === 'module_ip') {
+		userStates[chatId] = 'waiting_for_ip';
+		bot.editMessageText("🌐 Отправь мне IP-адрес для проверки (например: 8.8.8.8 или 1.1.1.1):", {
+			chat_id: chatId,
+			message_id: messageId,
+			reply_markup: backKeyboard
+		});
+	 } else if (action === 'module_url') {
+	 	userStates[chatId] = "waiting_for_url";
+	 	bot.editMessageText("🔗 Отправь мне подозрительную ссылку для анализа (например: bit.ly/3xyz или scam.com):", {
+	 				chat_id: chatId,
+	 				message_id: messageId,
+	 				reply_markup: backKeyboard
+	 	});
 	} else {
+        // Блок else всегда должен быть последним!
 		bot.editMessageText("⚠️ Этот модуль пока в разработке.", {
 			chat_id: chatId,
-			message_id: messageId, // Указываем какое именно сообщение менять
-			reply_markup: backKeyboard // Подставляем кнопку "назад"
+			message_id: messageId,
+			reply_markup: backKeyboard 
 		});
 	}
 
-	// Говорим телеграму что мы обработали клик (чтобы часики на кнопке пропали)
 	bot.answerCallbackQuery(query.id);
 });
 
@@ -81,52 +94,90 @@ bot.on('message', async (msg) => {
 	const chatId = msg.chat.id;
 	const text = msg.text;
 
-	// Игнорируем технические команды типа /start
 	if (!text || text === '/start') return;
 
-	// Проверяем ждет ли бот сейчас никнейм от этого пользователя
+    // --- МОДУЛЬ 1: ПРОБИВ НИКНЕЙМА ---
 	if (userStates[chatId] === 'waiting_for_username') {
-		// Очищаем состояние чтобы бот не зациклился
 		delete userStates[chatId];
 
-		// Отправляем сообщение-заглушку и запоминаем его ID чтобы потом перезаписать
 		const loadingMsg = await bot.sendMessage(chatId, `⏳ Сканирую никнейм: *${text}*...\n_Запускаю параллельные потоки..._`, { parse_mode: "Markdown" });
 
-		// ТУТ БУДЕТ НАСТОЯЩИЙ ПОИСК (FETCH)
 		try {
-			// МАГИЯ PROMISE.ALL: Летим сразу на 3 сайта одновременно!
 			const [githubRes, redditRes, linktreeRes] = await Promise.all([
 				fetch(`https://github.com/${text}`),
-				fetch(`https://www.reddit.com/user/${text}/about.json`), // Reddit API
+				fetch(`https://www.reddit.com/user/${text}/about.json`),
 				fetch(`https://linktr.ee/${text}`)
 			]);
 
-			// Проверяем отчеты
 			const gitStatus = githubRes.status === 200 ? `✅ [Найден](https://github.com/${text})` : `❌ Свободен`;	
 			const redditStatus = redditRes.status === 200 ? `✅ [Найден](https://reddit.com/${text})` : `❌ Свободен`;
 			const linktreeStatus = linktreeRes.status === 200 ? `✅ [Найден](https://linktr.ee/${text})` : `❌ Свободен`;
 
-
 			const report = `✅ **Отчет по никнейму ${text} готов!**\n\n` +
-													 `🐙 Github: ${gitStatus}\n` +
-													 `🤖 Reddit: ${redditStatus}\n` +
-													 `🌲 LinkTree: ${linktreeStatus}`;
+						   `🐙 Github: ${gitStatus}\n` +
+						   `🤖 Reddit: ${redditStatus}\n` +
+						   `🌲 LinkTree: ${linktreeStatus}`;
 
 			bot.editMessageText(report, {
 				chat_id: chatId,
 				message_id: loadingMsg.message_id,
 				parse_mode: "Markdown",
 				disable_web_page_preview: true,
-				reply_markup: backKeyboard // Снова даем возможность вернуться в меню
+				reply_markup: backKeyboard 
 			});
 
 		} catch (error) {
-		// Если вдруг интернет отпадет или сервер ляжет
-		bot.editMessageText(`⚠️ Ошибка сканирования: ${error.message}`, {
-			chat_id: chatId,
-			message_id: loadingMsg.message_id,
-			reply_markup: backKeyboard
-		});
+			bot.editMessageText(`⚠️ Ошибка сканирования: ${error.message}`, {
+				chat_id: chatId,
+				message_id: loadingMsg.message_id,
+				reply_markup: backKeyboard
+			});
+		}
+	} 
+    
+    // --- МОДУЛЬ 2: IP-РАДАР ---
+    else if (userStates[chatId] === 'waiting_for_ip') {
+		delete userStates[chatId]; 
+
+		const loadingMsg = await bot.sendMessage(chatId, `⏳ Пеленгую IP-адрес: *${text}*...\n_Запрос к базам провайдеров..._`, { parse_mode: "Markdown"});
+
+		try {
+			const response = await fetch(`http://ip-api.com/json/${text}?lang=ru`);
+			const data = await response.json();
+
+			if (data.status === 'success') {
+				const report = `✅ **IP-Радар: Цель обнаружена!**\n\n` +
+							   `🌐 IP: \`${data.query}\`\n` +
+							   `🏳️ Страна: ${data.country}\n` +
+							   `🏙 Город: ${data.city}\n` +
+							   `🏢 Провайдер: ${data.isp}\n` +
+							   `📍 Координаты: ${data.lat}, ${data.lon}`;
+
+				await bot.editMessageText(report, {
+					chat_id: chatId,
+					message_id: loadingMsg.message_id,
+					parse_mode: "Markdown",
+					reply_markup: backKeyboard
+				});
+
+				// МАГИЯ: Заставляем Телеграм прислать реальную карту!
+				await bot.sendLocation(chatId, data.lat, data.lon);			
+
+			} else {
+				bot.editMessageText(`❌ Ошибка: Неверный IP-адрес или цель скрыта.`, {
+					chat_id: chatId,
+					message_id: loadingMsg.message_id,
+					reply_markup: backKeyboard
+				});
+			}
+		} catch (error) {
+			bot.editMessageText(`⚠️ Ошибка связи со спутником: ${error.message}`, {
+				chat_id: chatId,
+				message_id: loadingMsg.message_id,
+				reply_markup: backKeyboard
+			});
+		}
 	}
-  } 
 });
+
+// --- МОДУЛЬ 3: АНАЛИЗ ССЫЛОК ---
