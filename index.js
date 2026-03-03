@@ -1,6 +1,6 @@
 require('dotenv').config(); // Достаем ключи из сейфа
 const TelegramBot = require('node-telegram-bot-api');
-const token = '8745156023:AAF4ma64qzj7wCwApoNtBbHPHdbGZ-bPgh8';
+const token = process.env.TELEGRAM_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
 
 console.log("Шлюз открыт. Полковник Пинтковский успешно запущен! 🕵🏻‍♂️");
