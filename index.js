@@ -16,11 +16,20 @@ const userStates = {};
 
 // --- НАШИ КЛАВИАТУРЫ (МЕНЮШКИ) ---
 // 1. Главное меню
+// 1. Главное меню
 const mainKeyboard = {
 	inline_keyboard: [
+		// Первый этаж (одна широкая кнопка)
 		[{ text: "👤 Пробив никнейма", callback_data: "module_username" }],
+		
+		// Второй этаж (две кнопки пополам)
 		[{ text: "🌐 IP-Радар", callback_data: "module_ip"}, { text: "🔗 Анализ ссылок", callback_data: "module_url" }],
-		[{ text: "💰 Крипто-Следопыт", callback_data: "module_crypto"}, { text: "🌍 Доменный радар", callback_data: "module_whois" }, { text: "⚙️ Мой профиль", callback_data: "menu_profile" }]
+		
+		// Третий этаж (две кнопки пополам)
+		[{ text: "🌍 Доменный радар", callback_data: "module_whois" }, { text: "💰 Крипто-Следопыт", callback_data: "module_crypto" }],
+		
+		// Четвертый этаж (одна широкая кнопка в самом низу)
+		[{ text: "⚙️ Мой профиль", callback_data: "menu_profile" }]
 	]
 };
 
