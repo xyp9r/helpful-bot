@@ -30,11 +30,23 @@ const backKeyboard = {
 		[{ text: "🔙 Назад в меню", callback_data: "menu_main" }]
 	]
 };
+// 3. Нижняя клавиатура
+const bottomKeyboard = {
+	keyboard: [
+		[{ text: "🖥 Показать меню"}]
+	],
+	resize_keyboard: true // Делает кнопку аккуратной, чтобы не занимала пол экрана
+};
 
 // --- СТАРТ ---
 bot.onText(/\/start/, (msg) => {
 	const chatId = msg.chat.id;
 	const userName = msg.from.first_name || "Хакер";
+
+	// Сначала кидаем короткое сообщение чтобы прицепить нижнюю клаву к экрану
+	await bot.sendMessage(chatId, "Шлюз открыт. Системная клавиатура загружена 🦇", {
+		reply_markup: bottomKeyboard
+	});
 
 	const welcomeText = `Привет, *${userName}*! 🕵🏻‍♂️\n\nДобро пожаловать в мультитул для разведки по открытым источникам.\n\nВыбери нужный инструмент в меню ниже:`;
 
@@ -42,7 +54,8 @@ bot.onText(/\/start/, (msg) => {
 		parse_mode: "Markdown",
 		reply_markup: mainKeyboard
 	});
-});
+
+}); // Закрывает bot.onText(/\/start/, (msg)
 
 // --- ОБРАБОТКА НАЖАТИЙ НА КНОПКИ ---
 bot.on('callback_query', (query) => {
@@ -102,6 +115,20 @@ bot.on('message', async (msg) => {
 	const text = msg.text;
 
 	if (!text || text === '/start') return;
+
+	// --- ОБРАБОТКА КНОПКИ "Показать меню" ---
+	if (text === '🖥 Показать меню') {
+		delete userStates[chatId]; // Сбрасываем любой зависший поиск
+
+		const userName = msg.from.first_name || "Хакер";
+		const welcomeText = `Главное меню. Выбери нужный инструмент, *${userName}*:`;
+
+		// Выдаем главное меню в ответ на нажатие кнопки
+		return bot.sendMessage(chatId, welcomeText, {
+			parse_mode: "Markdown",
+			reply_markup: mainKeyboard
+		});
+	}
 
     // --- МОДУЛЬ 1: ПРОБИВ НИКНЕЙМА ---
 	if (userStates[chatId] === 'waiting_for_username') {
