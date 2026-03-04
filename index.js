@@ -309,13 +309,14 @@ else if (userStates[chatId] === 'waiting_for_whois') {
 				message_id: loadingMsg.message_id,
 				reply_markup: backKeyboard
 			});
+		   }
 		} catch (error) {
 			bot.editMessageText(`⚠️ Ошибка связи со спутником: ${error.message}`, {
 				chat_id: chatId,
 				message_id: loadingMsg.message_id,
 				reply_markup: backKeyboard
 			});
-		}
 	}
 }
 }); // Закрывает весь блок с функционалом
+
