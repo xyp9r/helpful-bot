@@ -1,4 +1,11 @@
 require('dotenv').config(); // Достаем ключи из сейфа
+// --- ПУЛЬС ДЛЯ ОБЛАЧНОГО СЕРВЕРА ---
+const http = require('http');
+const port = process.env.PORT || 3000;
+http.createServer((req, res) => {
+	res.writeHead(200);
+	res.end('Bot is alive and running!');
+}).listen(port);
 const TelegramBot = require('node-telegram-bot-api');
 const token = process.env.TELEGRAM_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
@@ -178,6 +185,54 @@ bot.on('message', async (msg) => {
 			});
 		}
 	}
-});
 
 // --- МОДУЛЬ 3: АНАЛИЗ ССЫЛОК ---
+else if (userStates[chatId] === 'waiting_for_url') {
+	delete userStates[chatId];
+
+	const loadingMsg = await bot.sendMessage(chatId, `⏳ Просвечиваю ссылку рентгеном: *${text}*...`, { parse_mode: "Markdown"});
+
+	try {
+		// Умная обработка - если юзер забыл написать http:// , бот подставит сам
+		let urlToFetch = text;
+		if (!urlToFetch.startsWith('http')) {
+			urlToFetch = 'https://' + urlToFetch;
+		}
+
+		// Стучимся по ссылке (fetch сам пройдет по всем скрытым редиректам!)
+		const response = await fetch(urlToFetch);
+
+		// Достаем финальный адрес, куда нас в итоге привело
+		const finalUrl = response.url;
+
+		// Проверяем наличие защищенного соединения
+		const inSecure = finalUrl.startsWith('https') ? '✅ Да (HTTPS)' : '❌ Нет ( HTTP - перехват трафика!)';
+
+		let report = `✅ **Анализ ссылки завершен!**\n\n`;
+
+		// Если ссылка изменилась (был редирект) , предупреждаем об этом!
+		if (finalUrl !== urlToFetch && finalUrl !== urlToFetch + '/') {
+				report += `⚠️ **Обнаружена маскировка (Редирект)!**\n\n`;
+		}
+
+		report += `🔗 Исходная: \`${text}\`\n`;
+		report += `🎯 Ведет на: \`${finalUrl}\`\n`;
+		report += `🔒 Шифрование: \`${inSecure}\n`;
+		report += `📡 Статус сервера: \`${response.status} OK`;
+
+		await bot.editMessageText(report, {
+				chat_id: chatId,
+				message_id: loadingMsg.message_id,
+				parse_mode: "Markdown",
+				disable_web_page_preview: true, // Выключаем превью, чтобы не спамить картинками сайта
+				reply_markup: backKeyboard
+			});	
+	} catch (error) {
+		bot.editMessageText(`❌ Ошибка: Сайт мертв, либо ссылка недействительна.\nДетали: ${error.message}`, {
+			chat_id: chatId,
+			message_id: loadingMsg.message_id,
+			reply_markup: backKeyboard
+		});
+	}
+}
+}); // Закрывает весь блок с функционалом
