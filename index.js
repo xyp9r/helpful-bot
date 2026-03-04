@@ -20,7 +20,7 @@ const mainKeyboard = {
 	inline_keyboard: [
 		[{ text: "👤 Пробив никнейма", callback_data: "module_username" }],
 		[{ text: "🌐 IP-Радар", callback_data: "module_ip"}, { text: "🔗 Анализ ссылок", callback_data: "module_url" }],
-		[{ text: "🌍 Доменный радар", callback_data: "module_whois" }, { text: "⚙️ Мой профиль", callback_data: "menu_profile" }]
+		[{ text: "💰 Крипто-Следопыт", callback_data: "module_crypto"}, { text: "🌍 Доменный радар", callback_data: "module_whois" }, { text: "⚙️ Мой профиль", callback_data: "menu_profile" }]
 	]
 };
 
@@ -103,6 +103,13 @@ bot.on('callback_query', (query) => {
 	 				chat_id: chatId,
 	 				message_id: messageId,
 	 				reply_markup: backKeyboard
+	 	});
+	 } else if (action === 'module_crypto') {
+	 	userStates[chatId] = "waiting_for_crypto";
+	 	bot.editMessageText("💰 Отправь мне адрес крипто-кошелька (BTC, ETH, TRON) для анализа (например: 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa):", {
+	 		chat_id: chatId,
+	 		message_id: messageId,
+	 		reply_markup: backKeyboard
 	 	});
 	} else {
         // Блок else всегда должен быть последним!
@@ -316,6 +323,49 @@ else if (userStates[chatId] === 'waiting_for_whois') {
 				message_id: loadingMsg.message_id,
 				reply_markup: backKeyboard
 			});
+	}
+}
+
+// --- МОДУЛЬ 5: КРИПТО-СЛЕДОПЫТ (BTC, ETH, TRON) ---
+else if (userStates[chatId] === 'waiting_for_crypto') {
+	delete userStates[chatId];
+
+	const loadingMsg = await bot.sendMessage(chatId, `⏳ Сканирую блокчейн по кошельку: *${text}*...\n_Считаю транзакции..._`, { parse_mode: "Markdown"});
+
+	try {
+		const [BtcRes, EthRes, TronRes] = await Promise.all([
+			fetch(`https://blockchain.info/rawaddr/${text}`),
+			fetch(`https://api.blockcypher.com/v1/eth/main/addrs/${text}/balance`), // API для Ethereum
+			fetch(`https://apilist.tronscanapi.com/api/accountv2?address=${text}`)  // API для TRON
+		]);
+
+		// Анализируем ответы. Если сервер ответил 200 ОК - кошелек валидный и в нем были движения
+		// Сразу формируем красивые кликабельные ссылки на обозреватели!
+		const BtcStatus = BtcRes.status === 200 ? `✅ [Активен (Смотреть)](https://www.blockchain.com/explorer/addresses/btc/${text})` : `❌ Не найден`;
+		const EthStatus = EthRes.status === 200 ? `✅ [Активен (Смотреть)](https://etherscan.io/address/${text})` : `❌ Не найден`;
+		const	 TronStatus = TronRes.status === 200 ? `✅ [Активен (Смотреть)](https://tronscan.org/#/address/${text})` : `❌ Не найден`;
+
+		// Формируем финальный отчет
+		const report = `✅ **Крипто-Следопыт: Отчет готов!**\n\n` +
+													`🪙 Цель: \`${text}\`\n\n` +
+													`🟠 Bitcoin (BTC): ${BtcStatus}\n` +
+													`🔵 Ethereum (ETH): ${EthStatus}\n` +
+													`🔴 TRON (TRX): ${TronStatus}`;
+
+		// Обновляем сообщение
+		await bot.editMessageText(report, {
+			chat_id: chatId,
+			message_id: loadingMsg.message_id,
+			parse_mode: "Markdown",
+			disable_web_page_preview: true, // Отключаем огромные картинки сайтов
+			reply_markup: backKeyboard
+		});												
+	} catch (error) {
+				bot.editMessageText(`⚠️ Ошибка связи с блокчейнами: ${error.message}`, {
+					chat_id: chatId,
+					message_id: loadingMsg.message_id,
+					reply_markup: backKeyboard
+				});
 	}
 }
 }); // Закрывает весь блок с функционалом
