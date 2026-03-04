@@ -20,7 +20,7 @@ const mainKeyboard = {
 	inline_keyboard: [
 		[{ text: "👤 Пробив никнейма", callback_data: "module_username" }],
 		[{ text: "🌐 IP-Радар", callback_data: "module_ip"}, { text: "🔗 Анализ ссылок", callback_data: "module_url" }],
-		[{ text: "⚙️ Мой профиль", callback_data: "menu_profile" }]
+		[{ text: "🌍 Доменный радар", callback_data: "module_whois" }, { text: "⚙️ Мой профиль", callback_data: "menu_profile" }]
 	]
 };
 
@@ -89,6 +89,13 @@ bot.on('callback_query', (query) => {
 			chat_id: chatId,
 			message_id: messageId,
 			reply_markup: backKeyboard
+		});
+	} else if (action === 'module_whois') {
+		userStates[chatId] = 'waiting_for_whois';
+		bot.editMessageText("🌍 Отправь мне домен для пробива (например: scam.com):", {
+					chat_id: chatId,
+					message_id: messageId,
+					reply_markup: backKeyboard
 		});
 	 } else if (action === 'module_url') {
 	 	userStates[chatId] = "waiting_for_url";
@@ -260,6 +267,55 @@ else if (userStates[chatId] === 'waiting_for_url') {
 			message_id: loadingMsg.message_id,
 			reply_markup: backKeyboard
 		});
+	}
+}
+
+// --- МОДУЛЬ 4: ДОМЕННЫЙ РАДАР (WHOIS) ---
+else if (userStates[chatId] === 'waiting_for_whois') {
+	delete userStates[chatId];
+
+	const loadingMsg = await bot.sendMessage(chatId, `⏳ Пробиваю домен: *${text}*...\n_Связываюсь с реестрами..._`, { parse_mode: "Markdown"});
+
+	try {
+		// МАГИЯ : Очищаем ввод. Если юзер кинул ссылку с началом https то удаляеме его
+		const cleanDomain = text.replace(/^(?:https?:\/\/)?(?:www\.)?/i, "").split('/')[0];
+
+		// Стучимся к API
+		const response = await fetch(`https://networkcalc.com/api/dns/whois/${cleanDomain}`);
+
+		const data = await response.json();
+
+		// Проверяем, что домен существует и у него есть регистратор
+		if (data.status === 'OK' && data.whois && data.whois.registrar) {
+			const w = data.whois;
+
+			// Формируем красивый отчет
+			const report = `✅ **WHOIS-Радар: Цель найдена!**\n\n` +
+											`🌍 Домен: \`${cleanDomain}\`\n` +
+											`🏢 Регистратор: ${w.registrar}\n` +
+											`📅 Создан: ${new Date(w.creation_date).toLocaleDateString('ru-RU')}\n` +
+											`💀 Истекает: ${new Date(w.updated_date).toLocaleDateString('ru-RU')}\n` +
+											`👤 Владелец: ${w.registrant_name || 'Скрыт настройками приватности'}`;
+
+			await bot.editMessageText(report, {
+				chat_id: chatId,
+				message_id: loadingMsg.message_id,
+				parse_mode: "Markdown",
+				reply_markup: backKeyboard
+			});
+		} else {
+			bot.editMessageText(`❌ Ошибка: Домен свободен, введен с ошибкой или данные скрыты`, {
+				chat_id: chatId,
+				message_id: loadingMsg.message_id,
+				reply_markup: backKeyboard
+			});
+		} catch (error) {
+			bot.editMessageText(`⚠️ Ошибка связи со спутником: ${error.message}`, {
+				chat_id: chatId,
+				message_id: loadingMsg.message_id,
+				reply_markup: backKeyboard
+			});
+		}
 	}
 }
 }); // Закрывает весь блок с функционалом
