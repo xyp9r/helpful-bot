@@ -39,22 +39,22 @@ const bottomKeyboard = {
 };
 
 // --- СТАРТ ---
-bot.onText(/\/start/, (msg) => {
+bot.onText(/\/start/, async (msg) => {
 	const chatId = msg.chat.id;
 	const userName = msg.from.first_name || "Хакер";
 
-	// Сначала кидаем короткое сообщение чтобы прицепить нижнюю клаву к экрану
+	// Сначала кидаем короткое сообщение, чтобы прицепить нижнюю клаву к экрану
 	await bot.sendMessage(chatId, "Шлюз открыт. Системная клавиатура загружена 🦇", {
 		reply_markup: bottomKeyboard
 	});
 
 	const welcomeText = `Привет, *${userName}*! 🕵🏻‍♂️\n\nДобро пожаловать в мультитул для разведки по открытым источникам.\n\nВыбери нужный инструмент в меню ниже:`;
 
+	// Затем сразу кидаем красивое меню с инлайн-кнопками
 	bot.sendMessage(chatId, welcomeText, {
 		parse_mode: "Markdown",
 		reply_markup: mainKeyboard
 	});
-
 }); // Закрывает bot.onText(/\/start/, (msg)
 
 // --- ОБРАБОТКА НАЖАТИЙ НА КНОПКИ ---
