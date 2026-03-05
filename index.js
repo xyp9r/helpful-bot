@@ -394,29 +394,18 @@ else if (userStates[chatId] === 'waiting_for_email') {
 	const loadingMsg = await bot.sendMessage(chatId, `⏳ Пробиваю почту: *${text}*...\n_Ищу совпадения..._`, { parse_mode: "Markdown"});
 
 	try {
-
-			// Стучимся в открытое Api XposedOrNot
+		// Стучимся в открытое Api XposedOrNot + надеваем маску обычного браузера!
 		const response = await fetch(`https://api.xposedornot.com/v1/check-email/${text}`, {
-					method: 'GET',
-					headers: {
-									'User-Agent': 'Mozzila/5.0 (Windows NT 10.0; Win64; x64) AppleWebKil/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-									'Accept' : 'application/json'
-					}
+			headers: {
+				'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+			}
 		});
 
-		if (response.status === 200) {
-			const data = await response.json();
-			const breaches = data.breaches[0]; // Массив с названиями взломанных сайтов
-
-			// Если сайтов слишком много, возьмем первые 10, чтобы сообщение в тг не было слишком большим
-			const topBreaches = breaches.slice(0, 10).join(', ');
-			const moreCount = breaches.length > 10 ? `\n_... и еще ${breaches.length - 10} баз_` : '';
-
-			const report = `🚨 **ВНИМАНИЕ: Найдена утечка данных!**\n\n` +
-											`📧 Почта: \`${text}\`\n`	+
-											`💥 Количество сливов: ${breaches.length}\n\n` +
-											`🏴‍☠️ **Засветилась в базах:**\n${topBreaches}${moreCount}\n\n` +
-											`💡 _Рекомендация: Срочно смените пароли на этих сервисах и поставьте 2FA!_`;
+		// Если сервер сразу сказал 404 - слива данных нет!
+		if (response.status === 404) {
+			const report = `✅ **Чекер утечек: Цель в безопасности!**\n\n` +
+						   `📧 Почта: \`${text}\`\n\n` +
+						   `Данных нет в открытых сливах. Отличная работа по кибергигиене! 🛡`;
 
 			await bot.editMessageText(report, {
 				chat_id: chatId,
@@ -424,33 +413,60 @@ else if (userStates[chatId] === 'waiting_for_email') {
 				parse_mode: "Markdown",
 				reply_markup: backKeyboard
 			});
+			return; // Выходим отсюда, дальше проверять не нужно
+		}
 
-		} else if (response.status === 404) {
-			// Если сервер вернул 404 - значит слива данных нет!
-			const report = `✅ **Чекер утечек: Цель в безопасности!**\n\n` +
-														`📧 Почта: \`${text}\`\n\n` +
-														`Данных нет в открытых сливах. Отличная работа по кибергигиене! 🛡`;
+		if (response.status === 200) {
+			const data = await response.json();
+			
+			// БРОНЕБОЙНАЯ ПРОВЕРКА: Если внутри реально есть массив сливов
+			if (data.breaches && data.breaches[0]) {
+				const breaches = data.breaches[0]; // Массив с названиями взломанных сайтов
 
-			await bot.editMessageText(report, {
-				chat_id: chatId,
-				message_id: loadingMsg.message_id,
-				parse_mode: "Markdown",
-				reply_markup: backKeyboard
-			});							
+				// Берем первые 10 баз, чтобы не спамить стену текста
+				const topBreaches = breaches.slice(0, 10).join(', ');
+				const moreCount = breaches.length > 10 ? `\n_... и еще ${breaches.length - 10} баз_` : '';
+
+				const report = `🚨 **ВНИМАНИЕ: Найдена утечка данных!**\n\n` +
+							   `📧 Почта: \`${text}\`\n`	+
+							   `💥 Количество сливов: ${breaches.length}\n\n` +
+							   `🏴‍☠️ **Засветилась в базах:**\n${topBreaches}${moreCount}\n\n` +
+							   `💡 _Рекомендация: Срочно смените пароли на этих сервисах и поставьте 2FA!_`;
+
+				await bot.editMessageText(report, {
+					chat_id: chatId,
+					message_id: loadingMsg.message_id,
+					parse_mode: "Markdown",
+					reply_markup: backKeyboard
+				});
+			} 
+			// Если API ответило 200, но само написало "Error: Not found"
+			else if (data.Error || !data.breaches) {
+				const report = `✅ **Чекер утечек: Цель в безопасности!**\n\n` +
+							   `📧 Почта: \`${text}\`\n\n` +
+							   `Данных нет в открытых сливах. Отличная работа по кибергигиене! 🛡`;
+
+				await bot.editMessageText(report, {
+					chat_id: chatId,
+					message_id: loadingMsg.message_id,
+					parse_mode: "Markdown",
+					reply_markup: backKeyboard
+				});
+			}
 		} else {
-			bot.editMessageText(`❌ Ошибка проверки. Возможно, неверный формат почты.`, {
+			bot.editMessageText(`❌ Ошибка проверки. Возможно, неверный формат почты или сервер недоступен.`, {
 				chat_id: chatId,
 				message_id:loadingMsg.message_id,
 				reply_markup: backKeyboard
 			});
 		}	
-		} catch (error) {
-			bot.editMessageText(`⚠️ Ошибка связи с серверами: ${error.message}`, {
-				chat_id: chatId,
-				message_id:loadingMsg.message_id,
-				reply_markup: backKeyboard
-			});
-		}
+	} catch (error) {
+		bot.editMessageText(`⚠️ Ошибка связи с серверами: ${error.message}`, {
+			chat_id: chatId,
+			message_id:loadingMsg.message_id,
+			reply_markup: backKeyboard
+		});
+	}
 }
 }); // Закрывает весь блок с функционалом
 
