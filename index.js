@@ -452,3 +452,9 @@ else if (userStates[chatId] === 'waiting_for_email') {
 bot.on('polling_error', (error) => {
 	console.log("⚠️ Внутренняя ошибка Телеграма:", error.message);
 });
+
+// --- АБСОЛЮТНЫЙ ГЛУШИТЕЛЬ ОШИБОК ---
+// Перехватываем все сетевые обрывы, чтобы Node.js не выплевывал кишки (TLSWrap) в лог
+process.on('unhandledRejection', (reason, promise) => {
+    console.log("🛡 Заблокирована системная ошибка сети (игнорируем):", reason.message || "Неизвестный сбой");
+});
