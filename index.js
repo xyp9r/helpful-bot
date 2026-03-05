@@ -16,7 +16,6 @@ const userStates = {};
 
 // --- НАШИ КЛАВИАТУРЫ (МЕНЮШКИ) ---
 // 1. Главное меню
-// 1. Главное меню
 const mainKeyboard = {
 	inline_keyboard: [
 		// Первый этаж (одна широкая кнопка)
@@ -27,8 +26,11 @@ const mainKeyboard = {
 		
 		// Третий этаж (две кнопки пополам)
 		[{ text: "🌍 Доменный радар", callback_data: "module_whois" }, { text: "💰 Крипто-Следопыт", callback_data: "module_crypto" }],
+
+		// Четверный этаж
+		[{ text: "📧 Чекер утечек", callback_data: "module_breach"}]
 		
-		// Четвертый этаж (одна широкая кнопка в самом низу)
+		// Пятый этаж (одна широкая кнопка в самом низу)
 		[{ text: "⚙️ Мой профиль", callback_data: "menu_profile" }]
 	]
 };
@@ -116,16 +118,23 @@ bot.on('callback_query', (query) => {
 	 } else if (action === 'module_crypto') {
 	 	userStates[chatId] = "waiting_for_crypto";
 	 	bot.editMessageText("💰 Отправь мне адрес крипто-кошелька (BTC, ETH, TRON) для анализа (например: 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa):", {
-	 		chat_id: chatId,
-	 		message_id: messageId,
-	 		reply_markup: backKeyboard
+	 				chat_id: chatId,
+	 				message_id: messageId,
+	 				reply_markup: backKeyboard
 	 	});
+	} else if (action === 'module_breach') {
+		userStates[chatId] = "waiting_for_email";
+		bot.editMessageText("📧 Отправь мне Email для проверки по слитым базам (например: text@gmail.com):", {
+					chat_id: chatId,
+					message_id: messageId,
+					reply_markup: backKeyboard 
+		});
 	} else {
         // Блок else всегда должен быть последним!
 		bot.editMessageText("⚠️ Этот модуль пока в разработке.", {
-			chat_id: chatId,
-			message_id: messageId,
-			reply_markup: backKeyboard 
+					chat_id: chatId,
+					message_id: messageId,
+					reply_markup: backKeyboard 
 		});
 	}
 
@@ -376,6 +385,66 @@ else if (userStates[chatId] === 'waiting_for_crypto') {
 					reply_markup: backKeyboard
 				});
 	}
+}
+
+// --- МОДУЛЬ 6: ЧЕКЕР УТЕЧЕК (DATA BREACH) ---
+else if (userStates[chatId] === 'waiting_for_email') {
+	delete userStates[chatId];
+
+	const loadingMsg = await bot.sendMessage(chatId, `⏳ Пробиваю почту: *${text}*...\n_Ищу совпадения..._`, { parse_mode: "Markdown"});
+
+	try {
+
+			// Стучимся в открытое Api XposedOrNot
+		const response = await fetch(`https://api.xposedornot.com/v1/check-email/${text}`);
+
+		if (response.status === 200) {
+			const data = await response.json();
+			const breaches = data.breaches[0]; // Массив с названиями взломанных сайтов
+
+			// Если сайтов слишком много, возьмем первые 10, чтобы сообщение в тг не было слишком большим
+			const topBreaches = breaches.slice(0, 10).join(', ');
+			const moreCount = breaches.length > 10 ? `\n... и еще ${breaches.length - 10} баз_` : '';
+
+			const report = `🚨 **ВНИМАНИЕ: Найдена утечка данных!**\n\n` +
+											`📧 Почта: \`${text}\`\n`	+
+											`💥 Количество сливов: ${breaches.length}\n\n` +
+											`🏴‍☠️ **Засветилась в базах:**\n${topBreaches}${moreCount}\n\n` +
+											`💡 _Рекомендация: Срочно смените пароли на этих сервисах и поставьте 2FA!_`;
+
+			await bot.editMessageText(report, {
+				chat_id: chatId,
+				message_id: loadingMsg.message_id,
+				parse_mode: "Markdown",
+				reply_markup: backKeyboard
+			});
+
+		} else if (response.status === 404) {
+			// Если сервер вернул 404 - значит слива данных нет!
+			const report = `✅ **Чекер утечек: Цель в безопастности!**\n\n` +
+														`📧 Почта: \`${text}\`\n\n` +
+														`Данных нет в открытых сливах. Отличная работа по кибергигиене! 🛡`;
+
+			await bot.editMessageText(report, {
+				chat_id: chatId,
+				message_id: loadingMsg.message_id,
+				parse_mode: "Markdown",
+				reply_markup: backKeyboard
+			});							
+		} else {
+			bot.editMessageText(`❌ Ошибка проверки. Возможно, неверный формат почты.`, {
+				chat_id: chatId,
+				message_id:loadingMsg.message_id,
+				reply_markup: backKeyboard
+			});
+		}	
+		} catch (error) {
+			bot.editMessageText(`⚠️ Ошибка связи с серверами: ${error.message}`, {
+				chat_id: chatId,
+				message_id:loadingMsg.message_id,
+				reply_markup: backKeyboard
+			});
+		}
 }
 }); // Закрывает весь блок с функционалом
 
