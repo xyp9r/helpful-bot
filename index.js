@@ -276,8 +276,8 @@ else if (userStates[chatId] === 'waiting_for_url') {
 
 		report += `🔗 Исходная: \`${text}\`\n`;
 		report += `🎯 Ведет на: \`${finalUrl}\`\n`;
-		report += `🔒 Шифрование: \`${inSecure}\n`;
-		report += `📡 Статус сервера: \`${response.status} OK`;
+		report += `🔒 Шифрование: ${inSecure}\n`;
+		report += `📡 Статус сервера: ${response.status} OK`;
 
 		await bot.editMessageText(report, {
 				chat_id: chatId,
@@ -404,7 +404,7 @@ else if (userStates[chatId] === 'waiting_for_email') {
 
 			// Если сайтов слишком много, возьмем первые 10, чтобы сообщение в тг не было слишком большим
 			const topBreaches = breaches.slice(0, 10).join(', ');
-			const moreCount = breaches.length > 10 ? `\n... и еще ${breaches.length - 10} баз_` : '';
+			const moreCount = breaches.length > 10 ? `\n_... и еще ${breaches.length - 10} баз_` : '';
 
 			const report = `🚨 **ВНИМАНИЕ: Найдена утечка данных!**\n\n` +
 											`📧 Почта: \`${text}\`\n`	+
@@ -421,7 +421,7 @@ else if (userStates[chatId] === 'waiting_for_email') {
 
 		} else if (response.status === 404) {
 			// Если сервер вернул 404 - значит слива данных нет!
-			const report = `✅ **Чекер утечек: Цель в безопастности!**\n\n` +
+			const report = `✅ **Чекер утечек: Цель в безопасности!**\n\n` +
 														`📧 Почта: \`${text}\`\n\n` +
 														`Данных нет в открытых сливах. Отличная работа по кибергигиене! 🛡`;
 
@@ -448,3 +448,7 @@ else if (userStates[chatId] === 'waiting_for_email') {
 }
 }); // Закрывает весь блок с функционалом
 
+// Отлавливаем скрытые ошибки Телеграма, чтобы они не ломали сервер
+bot.on('polling_error', (error) => {
+	console.log("⚠️ Внутренняя ошибка Телеграма:", error.message);
+});
