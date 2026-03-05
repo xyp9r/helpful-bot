@@ -13,6 +13,7 @@ const bot = new TelegramBot(token, { polling: true });
 console.log("Шлюз открыт. Полковник Пинтковский успешно запущен! 🕵🏻‍♂️");
 
 const userStates = {};
+const searchCache = {}; // Оперативная память для хранения результатов поиска
 
 // --- НАШИ КЛАВИАТУРЫ (МЕНЮШКИ) ---
 // 1. Главное меню
@@ -129,6 +130,52 @@ bot.on('callback_query', (query) => {
 					message_id: messageId,
 					reply_markup: backKeyboard 
 		});
+	} else if (action = 'expand_breaches') {
+		// Достаем сохраненный массив из памяти
+		const cache = searchCache[chatId];
+		if (!cache) return bot.answerCallbackQuery(query.id, { text: "⚠️ Данные устарели. Пробей почту заново.", show_alert: true});
+
+		const allBreaches = cache.breaches.join(', ');
+		const report = `🚨 **ВНИМАНИЕ: Найдена утечка данных!**\n\n` +
+													`📧 Почта: \`${cache.email}\`\n` +
+													`💥 Количество сливов: ${cache.breaches.length}\n\n` +
+													`🏴‍☠️ **Засветилась в базах:**\n${allBreaches}\n\n` +
+													`💡 _Рекомендация: Срочно смените пароли за этих сервисах и поставьте 2FA!_`;
+		bot.editMessageText(report, {
+			chat_id: chatId,
+			message_id: messageId,
+			parse_mode: "Markdown",
+			reply_markup: {
+						inline_keyboard: [
+							[{ text: "🔼 Свернуть список", callback_data: "collapse_breaches"}],
+							[{ text: "🔙 Назад в меню", callback_data: "menu_main"}]
+						]
+				}
+		});
+	} else if (action === 'collapse_breaches') {
+		const cache = searchCache[chatId];
+		if (!cache) return bot.answerCallbackQuery(query.id, { text: "⚠️ Данные устарели. Пробей почту заново", show_alert: true});
+
+		const topBreaches = cache.breaches.slice(0, 10).join(', ');
+		const moreCount = `\n_... и еще ${cache.breaches.length - 10} баз_`;
+
+		const report = `🚨 **ВНИМАНИЕ: Найдена утечка данных!**\n\n`
+													`📧 Почта: \`${cache.email}\`\n` +
+													`💥 Количество сливов: ${cache.breaches.length}\n\n` +
+													`🏴‍☠️ **Засветилась в базах:**\n${topBreaches}${moreCount}\n\n` +
+													`💡 _Рекомендация: Срочно смените пароли за этих сервисах и поставьте 2FA!_`;
+
+		bot.editMessageText(report, {
+			chat_id: chatId,
+			message_id: messageId,
+			parse_mode: "Markdown",
+			reply_markup: {
+				inline_keyboard: [
+							[{ text: "🔽 Показать всё (${cache.breaches.length})", callback_data: "expand_breaches"}],
+							[{ text: "🔙 Назад в меню", callback_data: "menu_main"}]
+				]
+			}
+		});																							
 	} else {
         // Блок else всегда должен быть последним!
 		bot.editMessageText("⚠️ Этот модуль пока в разработке.", {
@@ -434,15 +481,24 @@ else if (userStates[chatId] === 'waiting_for_crypto') {
                                        `🏴‍☠️ **Засветилась в базах:**\n${topBreaches}${moreCount}\n\n` +
                                        `💡 _Рекомендация: Срочно смените пароли на этих сервисах и поставьте 2FA!_`;
 
+                        // МАГИЯ: Сохраняем данные в нашу оперативную память               
+                        searchCache[chatId] = { email: text, breaches: flatBreaches };
+
+                        // Формируем клавиатуру. Если баз > 10, добавляем кнопку развертывания
+                        const keyboard = { inline_keyboard: [] };
+                        if(flatBreaches.length > 10) {
+                        		keyboard.inline_keyboard.push([{ text:`🔽 Показать всё (flatBreaches.length`, callback_data: "expand_breaches"}]);
+                        }
+                        keyboard.inline_keyboard.push([{ text:"🔙 Назад в меню", callback_data: "menu_main" }]);              
+
                         await bot.editMessageText(report, {
                             chat_id: chatId,
                             message_id: loadingMsg.message_id,
                             parse_mode: "Markdown",
-                            reply_markup: backKeyboard
+                            reply_markup: keyboard
                         });
                         return; // Выходим
                     }
-				} 
                 
                 // Если API ответил 200, но массива нет или он пустой (почта чистая)
                 const report = `✅ **Чекер утечек: Цель в безопасности!**\n\n` +
