@@ -28,7 +28,7 @@ const mainKeyboard = {
 		[{ text: "🌍 Доменный радар", callback_data: "module_whois" }, { text: "💰 Крипто-Следопыт", callback_data: "module_crypto" }],
 
 		// Четверный этаж
-		[{ text: "📧 Чекер утечек", callback_data: "module_breach"}]
+		[{ text: "📧 Чекер утечек", callback_data: "module_breach"}],
 		
 		// Пятый этаж (одна широкая кнопка в самом низу)
 		[{ text: "⚙️ Мой профиль", callback_data: "menu_profile" }]
@@ -396,7 +396,13 @@ else if (userStates[chatId] === 'waiting_for_email') {
 	try {
 
 			// Стучимся в открытое Api XposedOrNot
-		const response = await fetch(`https://api.xposedornot.com/v1/check-email/${text}`);
+		const response = await fetch(`https://api.xposedornot.com/v1/check-email/${text}`, {
+					method: 'GET',
+					headers: {
+									'User-Agent': 'Mozzila/5.0 (Windows NT 10.0; Win64; x64) AppleWebKil/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+									'Accept' : 'application/json'
+					}
+		});
 
 		if (response.status === 200) {
 			const data = await response.json();
