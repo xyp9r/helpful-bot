@@ -204,7 +204,7 @@ bot.on('message', async (msg) => {
 	const text = msg.text;
 
 	// Если это команда statr - игнорим, она обрабатывается первым блоком
-	if (!text || text === '/start') return;
+	if (text === '/start') return;
 
 	// если текста нет, и мы щас не ждем фотку в 7 модуле то тоже игнорим
 	if (!text && userStates[chatId] !== 'waiting_for_photo') return;
