@@ -181,7 +181,7 @@ bot.on('callback_query', (query) => {
 	} else if (action === 'module_exif') {
 		userStates[chatId] = 'waiting_for_photo';
 		bot.editMessageText("📸 Отправь мне фотографию **КАК ДОКУМЕНТ/ФАЙЛ** (без сжатия).\n\n_Важно: Если отправить как обычную картинку, Телеграм сответ все GPS-координаты!_", {
-			hat_id: chatId,
+			chat_id: chatId,
 			message_id: messageId,
 			parse_mode: "Markdown",
 			reply_markup: backKeyboard
@@ -578,7 +578,7 @@ else if (userStates[chatId] === 'waiting_for_crypto') {
 
 				// Оригинальная дата съемки
 				if (exifData.DateTimeOriginal) {
-					const date = new Date(exifData.DataTimeOriginal).toLocalString('ru-RU');
+					const date = new Date(exifData.DateTimeOriginal).toLocaleString('ru-RU');
 					report += `📅 **Дата съемки:** ${date}\n`;
 				}
 
@@ -591,8 +591,8 @@ else if (userStates[chatId] === 'waiting_for_crypto') {
 				if (exifData.latitude && exifData.longitude) {
 					report += `\n🌍 **Геолокация:**\n`;
 					report += `📍 Широта: \`${exifData.latitude}\`\n`;
-					report += `📍 Долгота: \`${exifData.longtitude}\`\n`;
-					report += `🗺 [Открыть в Google Maps](https://www.google.com/maps?q=${exifData.latitude},${exifData.longtitude})\n`;
+					report += `📍 Долгота: \`${exifData.longitude}\`\n`;
+					report += `🗺 [Открыть в Google Maps](https://www.google.com/maps?q=${exifData.latitude},${exifData.longitude})\n`;
 				} else {
 					report += `\n🌍 **Геолокация:** Координаты не найдены (GPS был выключен при съемке).\n`;
 				}
