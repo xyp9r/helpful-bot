@@ -545,7 +545,7 @@ else if (userStates[chatId] === 'waiting_for_crypto') {
 		
 		// 1. проверяем прислал ли юзер именно файлом фотографию
 		if (!msg.document) {
-			returt bot.sendMessage(chatId, "⚠️ Ты прислал сжатое фото или текст! \n\nПришли картинку именно как **файл** (документ) 📎", { parse_mode: "Markdown"});
+			return bot.sendMessage(chatId, "⚠️ Ты прислал сжатое фото или текст! \n\nПришли картинку именно как **файл** (документ) 📎", { parse_mode: "Markdown"});
 		}
 
 		// 2. берем IDф айла и кидаем сообщение загрузки
