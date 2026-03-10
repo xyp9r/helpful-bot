@@ -7,6 +7,7 @@ http.createServer((req, res) => {
 	res.end('Bot is alive and running!');
 }).listen(port);
 const TelegramBot = require('node-telegram-bot-api');
+const exifr = require('exifr');
 const token = process.env.TELEGRAM_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
 
@@ -29,7 +30,7 @@ const mainKeyboard = {
 		[{ text: "🌍 Доменный радар", callback_data: "module_whois" }, { text: "💰 Крипто-Следопыт", callback_data: "module_crypto" }],
 
 		// Четверный этаж
-		[{ text: "📧 Чекер утечек", callback_data: "module_breach"}],
+		[{ text: "📧 Чекер утечек", callback_data: "module_breach"}, { text: "📸 Фото-Криминалист", callback_data: "module_exif"}],
 		
 		// Пятый этаж (одна широкая кнопка в самом низу)
 		[{ text: "⚙️ Мой профиль", callback_data: "menu_profile" }]
@@ -176,7 +177,15 @@ bot.on('callback_query', (query) => {
 					[{ text: "🔙 Назад в меню", callback_data: "menu_main"}]
 				]
 			}
-		});																																						
+		});
+	} else if (action === 'module_exif') {
+		userStates[chatId] = 'waiting_for_photo';
+		bot.editMessageText("📸 Отправь мне фотографию **КАК ДОКУМЕНТ/ФАЙЛ** (без сжатия).\n\n_Важно: Если отправить как обычную картинку, Телеграм сответ все GPS-координаты!_", {
+			hat_id: chatId,
+			message_id: messageId,
+			parse_mode: "Markdown",
+			reply_markup: backKeyboard
+		});																																							
 	} else {
         // Блок else всегда должен быть последним!
 		bot.editMessageText("⚠️ Этот модуль пока в разработке.", {
@@ -530,6 +539,86 @@ else if (userStates[chatId] === 'waiting_for_crypto') {
 			});
 		}
 	}
+
+// --- МОДУЛЬ 7: ФОТО-КРИМИНАЛИСТ (EXIF) ---
+	else if (userStates[chatId] === 'waiting_for_photo') {
+		
+		// 1. проверяем прислал ли юзер именно файлом фотографию
+		if (!msg.document) {
+			returt bot.sendMessage(chatId, "⚠️ Ты прислал сжатое фото или текст! \n\nПришли картинку именно как **файл** (документ) 📎", { parse_mode: "Markdown"});
+		}
+
+		// 2. берем IDф айла и кидаем сообщение загрузки
+		const fileId = msg.document.file_id;
+		const loadingMsg = await bot.sendMessage(chatId, "🔍 Скачиваю файл и ищу скрытые метаданные...");
+
+		try {
+				// 3. получаем прямую ссылку на скачивание файла от серверов тг
+				const fileLink = await bot.getFileLink(fileId);
+
+				// 4. Магия библеотеки exifr! Она умеет читать прямо по ссылке
+				const exifData = await exifr.parse(fileLink);
+
+				// Если метаданных вообще нет (например картинка скачана с вк)
+				if (!exifData) {
+					return bot.editMessageText("❌ Никаких скрытых данных (EXIF) не найдено. Возможно, они были удалены или картинска скачана из соцсети.", {
+						chat_id: chatId,
+						message_id: loadingMsg.message_id,
+						reply_markup: backKeyboard
+					});
+				}
+
+				// 5. собираем отчет
+				let report = "📸 **ФОТО-КРИМИНАЛИСТ (EXIF)**\n\n";
+
+				// Производитель и модель устройства
+				if (exifData.Make || exifData.Model) {
+					report += `📱 **Устройство:** ${exifData.Make || 'Неизвестно'} ${exifData.Model || ''}\n`;
+				}
+
+				// Оригинальная дата съемки
+				if (exifData.DateTimeOriginal) {
+					const date = new Date(exifData.DataTimeOriginal).toLocalString('ru-RU');
+					report += `📅 **Дата съемки:** ${date}\n`;
+				}
+
+				// Программа в которой редактировали
+				if (exifData.Software) {
+					report += `💻 **Софт:** ${exifData.Software}\n`;
+				}
+
+				// Геолокация
+				if (exifData.latitude && exifData.longitude) {
+					report += `\n🌍 **Геолокация:**\n`;
+					report += `📍 Широта: \`${exifData.latitude}\`\n`;
+					report += `📍 Долгота: \`${exifData.longtitude}\`\n`;
+					report += `🗺 [Открыть в Google Maps](https://www.google.com/maps?q=${exifData.latitude},${exifData.longtitude})\n`;
+				} else {
+					report += `\n🌍 **Геолокация:** Координаты не найдены (GPS был выключен при съемке).\n`;
+				}
+
+		// Отправляем результат и обновляем меню
+		bot.editMessageText(report, {
+			chat_id: chatId,
+			message_id: loadingMsg.message_id,
+			parse_mode: "Markdown",
+			disable_web_page_preview: true, // чтобы гугл карты не давали огромное превью
+			reply_markup: backKeyboard
+		});
+
+		// Очищаем состояние как мы закончили
+		delete userStates[chatId];
+	} catch (error) {
+		console.error("Ошибка в модуле EXIF:", error);
+		bot.editMessageText("⚠️ Ошибка при анализе фото. Возможно, формат не поддерживается библиотекой.", {
+			chat_id: chatId,
+			message_id: loadingMsg.message_id,
+			reply_markup: backKeyboard
+		});
+		// Очищаем стейт
+		delete userStates[chatId];
+	}
+}
 
 }); // Закрывает весь блок с функционалом
 
