@@ -230,7 +230,7 @@ bot.on('message', async (msg) => {
 		const loadingMsg = await bot.sendMessage(chatId, `⏳ Сканирую никнейм: *${text}*...\n_Запускаю параллельные потоки..._`, { parse_mode: "Markdown" });
 
 		try {
-			const [githubRes, redditRes, linktreeRes] = await Promise.all([
+			const [githubRes, redditRes, linktreeRes, tgRes, habrRes] = await Promise.all([
 				fetch(`https://github.com/${text}`),
 				fetch(`https://www.reddit.com/user/${text}/about.json`),
 				fetch(`https://linktr.ee/${text}`),
@@ -250,14 +250,14 @@ bot.on('message', async (msg) => {
 
 			// если на странице есть блок с именем - значит юзер существует
 			const tgExists = tgHtml.includes('tgme_page_title');
-			const tgStatusCheck = tgExists ? `✅ [Найден](https://t.me/${text}` : `❌ Свободен`;
+			const tgStatusCheck = tgExists ? `✅ [Найден](https://t.me/${text})` : `❌ Свободен`;
 
 			// собираем финальный отчет
 			const report = `✅ **Отчет по никнейму ${text} готов!**\n\n` +
-						   `✈️ Telegram: ${tgStatusCheck}`+
+						   `✈️ Telegram: ${tgStatusCheck}\n`+
 						   `🐙 Github: ${gitStatus}\n` +
 						   `🤖 Reddit: ${redditStatus}\n` +
-						   `🌲 LinkTree: ${linktreeStatus}` +
+						   `🌲 LinkTree: ${linktreeStatus}\n` +
 						   `📝 Habr: ${habrStatus}`;
 
 			bot.editMessageText(report, {
