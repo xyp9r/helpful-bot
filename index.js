@@ -233,17 +233,32 @@ bot.on('message', async (msg) => {
 			const [githubRes, redditRes, linktreeRes] = await Promise.all([
 				fetch(`https://github.com/${text}`),
 				fetch(`https://www.reddit.com/user/${text}/about.json`),
-				fetch(`https://linktr.ee/${text}`)
+				fetch(`https://linktr.ee/${text}`),
+				fetch(`https://t.me/${text}`),
+				fetch(`https://habr.com/ru/users/${text}/`)
 			]);
 
+			// проверка статусов ответа
 			const gitStatus = githubRes.status === 200 ? `✅ [Найден](https://github.com/${text})` : `❌ Свободен`;	
 			const redditStatus = redditRes.status === 200 ? `✅ [Найден](https://reddit.com/${text})` : `❌ Свободен`;
 			const linktreeStatus = linktreeRes.status === 200 ? `✅ [Найден](https://linktr.ee/${text})` : `❌ Свободен`;
+			const habrStatus = habrRes.status === 200 ? `✅ [Найден](https://habr.com/ru/users/${text})` : `❌ Свободен`;
 
+			// хитрая проверка телеграм (парсим html)
+			// скачиваем код страницы тг
+			const tgHtml = await tgRes.text();
+
+			// если на странице есть блок с именем - значит юзер существует
+			const tgExists = tgHtml.includes('tgme_page_title');
+			const tgStatusCheck = tgExists ? `✅ [Найден](https://t.me/${text}` : `❌ Свободен`;
+
+			// собираем финальный отчет
 			const report = `✅ **Отчет по никнейму ${text} готов!**\n\n` +
+						   `✈️ Telegram: ${tgStatusCheck}`+
 						   `🐙 Github: ${gitStatus}\n` +
 						   `🤖 Reddit: ${redditStatus}\n` +
-						   `🌲 LinkTree: ${linktreeStatus}`;
+						   `🌲 LinkTree: ${linktreeStatus}` +
+						   `📝 Habr: ${habrStatus}`;
 
 			bot.editMessageText(report, {
 				chat_id: chatId,
