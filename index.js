@@ -31,8 +31,11 @@ const mainKeyboard = {
 
 		// Четверный этаж
 		[{ text: "📧 Чекер утечек", callback_data: "module_breach"}, { text: "📸 Фото-Криминалист", callback_data: "module_exif"}],
+
+		// Пятый этаж - каталог осинт-инструментов
+		[{ text: "🧰 Каталог OSING-тулзов", callback_data: "module_catalog"}],
 		
-		// Пятый этаж (одна широкая кнопка в самом низу)
+		// Шестой этаж (одна широкая кнопка в самом низу)
 		[{ text: "⚙️ Мой профиль", callback_data: "menu_profile" }]
 	]
 };
@@ -195,6 +198,29 @@ bot.on('callback_query', (query) => {
 			chat_id: chatId,
 			message_id: messageId,
 			parse_mode: "Markdown",
+			reply_markup: backKeyboard
+		});
+	} else if (action === 'module_catalog') {
+			const catalogText = `🧰 **База OSINT-инструментов**\n\n` +
+																		`*🔍 Поиск по лицу и фото:*\n` +
+																		`• [PimEyes](https://pimeyes.com) — лучший поиск по лицу\n` +
+																		`• [FaceCheck.ID](https://facecheck.id) — поиск лица по соцсетям\n` +
+																		`• [Google Lens](https://lens.google) — поиск по предметам и интерьеру\n\n` +
+																		`*🕸 Графы и связи:*\n` +
+																		`• [SpiderFoot](https://github.com/smicallef/spiderfoot) — авто-сбор данных по нику/почте\n` +
+																		`• [Maltego](https://www.maltego.com) — построение графов связей\n\n` +
+																		`*👤 Никнеймы и соцсети:*\n` +
+																		`• [Social-Analyzer](https://github.com/qeeqbox/social-analyzer) — продвинутый поиск никнеймов\n` +
+																		`• [220vk](http://new.220vk.ru) — скрытые друзья и история ВК\n` +
+																		`• [Social Searcher](https://social-searcher.com) — упоминания в соцсетях\n\n` +
+																		`*💾 Архивы:*\n` +
+																		`• [Wayback Machine](https://web.archive.org) — история изменения сайтов`;
+		
+		bot.editMessageText(catalogText, {
+			chat_id: chatId,
+			message_id: messageId,
+			parse_mode: "Markdown",
+			disable_web_page_preview: true,
 			reply_markup: backKeyboard
 		});																																							
 	} else {
