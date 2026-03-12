@@ -60,7 +60,7 @@ bot.onText(/\/start/, async (msg) => {
 	const userName = msg.from.first_name || "Хакер";
 
 	// Сначала кидаем короткое сообщение, чтобы прицепить нижнюю клаву к экрану
-	await bot.sendMessage(chatId, "Шлюз открыт. Системная клавиатура загружена 🦇", {
+	await bot.sendMessage(chatId, "Шлюз открыт. Бот готов к использованию 🦇", {
 		reply_markup: bottomKeyboard
 	});
 
